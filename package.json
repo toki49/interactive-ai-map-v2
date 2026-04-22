@@ -1,0 +1,31 @@
+{
+  "name": "jait-interactive-map",
+  "version": "1.0.0",
+  "description": "Interactive map for JAI-T criminal justice AI deployments",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^4.2.1",
+    "papaparse": "^5.4.1",
+    "lucide-react": "^0.263.1",
+    "clsx": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@types/leaflet": "^1.9.4",
+    "@types/papaparse": "^5.3.7",
+    "@vitejs/plugin-react": "^4.0.3",
+    "vite": "^4.4.5",
+    "tailwindcss": "^3.3.3",
+    "autoprefixer": "^10.4.15",
+    "postcss": "^8.4.29"
+  }
+}

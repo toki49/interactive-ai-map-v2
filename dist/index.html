@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAI-T Interactive Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <link rel="stylesheet" href="/assets/index-be6d61fc.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Statistics Bar -->
+        <div class="stats-bar">
+            <div class="stat-item"><span class="stat-number" id="cities-count">0</span> Cities</div>
+            <div class="stat-item"><span class="stat-number" id="tools-count">0</span> Tools shown</div>
+            <div class="stat-item"><span class="stat-number" id="active-count">0</span> Active tools</div>
+            <div class="stat-item"><span class="stat-number" id="domains-count">0</span> Across domains</div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="filters">
+            <!-- Category Filters -->
+            <div class="filter-row">
+                <div class="filter-group">
+                    <h3>Categories</h3>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all" data-type="category">All</button>
+                        <button class="filter-btn" data-filter="detection" data-type="category">Detection</button>
+                        <button class="filter-btn" data-filter="surveillance" data-type="category">Surveillance</button>
+                        <button class="filter-btn" data-filter="prediction" data-type="category">Prediction</button>
+                        <button class="filter-btn" data-filter="forensic analysis" data-type="category">Forensic Analysis</button>
+                        <button class="filter-btn" data-filter="back-end admin" data-type="category">Back-end Admin</button>
+                        <button class="filter-btn" data-filter="front-end support" data-type="category">Front-end Support</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Domain Filters -->
+            <div class="filter-row">
+                <div class="filter-group">
+                    <h3>Domains</h3>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all" data-type="domain">All</button>
+                        <button class="filter-btn" data-filter="corrections" data-type="domain">Corrections</button>
+                        <button class="filter-btn" data-filter="courts" data-type="domain">Courts</button>
+                        <button class="filter-btn" data-filter="law enforcement" data-type="domain">Law Enforcement</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Container -->
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <h4>Legend</h4>
+            <div class="legend-item">
+                <span class="legend-dot" style="background: #14b8a6;"></span>
+                Detection
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot" style="background: #ec4899;"></span>
+                Surveillance
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot" style="background: #f97316;"></span>
+                Prediction
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot" style="background: #22c55e;"></span>
+                Forensic
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot" style="background: #8b5cf6;"></span>
+                Back-end
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot" style="background: #92400e;"></span>
+                Front-end
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot" style="background: #6b7280;"></span>
+                Multiple/Other
+            </div>
+            <div class="legend-note">Dot size = number of tools</div>
+        </div>
+
+        <!-- Sidebar for City Details -->
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h2 id="city-name">City Details</h2>
+                <button class="close-btn" onclick="closeSidebar()">&times;</button>
+            </div>
+            <div id="city-details" class="city-details">
+                <!-- City details will be populated here -->
+            </div>
+        </div>
+
+        <!-- Tooltip -->
+        <div id="tooltip" class="tooltip"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
