@@ -1,531 +1,444 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, GeoJSON } from 'react-leaflet';
-import { Search, Filter, X, MapPin, Activity, Users, Globe } from 'lucide-react';
+import { MapContainer, TileLayer, CircleMarker, GeoJSON, useMap } from 'react-leaflet';
 import Papa from 'papaparse';
-import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import usStates from '../public/us-states.json';
 
-// Custom marker icons
-const createCustomIcon = (category, size) => {
-  const colors = {
-    detection: '#14b8a6',
-    surveillance: '#ec4899',
-    prediction: '#f97316',
-    'forensic analysis': '#22c55e',
-    'back-end admin': '#8b5cf6',
-    'front-end support': '#92400e',
-    other: '#6b7280'
-  };
-  
-  const color = colors[category?.toLowerCase()] || colors.other;
-  const radius = Math.min(Math.max(size * 2, 8), 25);
-  
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="background: ${color}; width: ${radius * 2}px; height: ${radius * 2}px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [radius * 2, radius * 2],
-    iconAnchor: [radius, radius]
+const CATEGORY_COLORS = {
+  'detection':        '#3b82f6',
+  'surveillance':     '#ec4899',
+  'prediction':       '#f97316',
+  'forensic analysis':'#22c55e',
+  'back-end admin':   '#8b5cf6',
+  'front-end support':'#92400e',
+};
+const DEFAULT_COLOR = '#6b7280';
+
+const CATEGORIES = [
+  'detection', 'surveillance', 'prediction',
+  'forensic analysis', 'back-end admin', 'front-end support',
+];
+const DOMAINS = ['corrections', 'courts', 'law enforcement'];
+
+const CITY_COORDS = {
+  'Albuquerque':      [35.0844, -106.6504],
+  'Anaheim':          [33.8366, -117.9143],
+  'Anchorage':        [61.2181, -149.9003],
+  'Arlington':        [32.7357,  -97.1081],
+  'Atlanta':          [33.7490,  -84.3880],
+  'Aurora':           [39.7294, -104.8319],
+  'Austin':           [30.2672,  -97.7431],
+  'Bakersfield':      [35.3733, -119.0187],
+  'Baltimore':        [39.2904,  -76.6122],
+  'Boise':            [43.6150, -116.2023],
+  'Boston':           [42.3601,  -71.0589],
+  'Buffalo':          [42.8864,  -78.8784],
+  'Cape Coral':       [26.5629,  -81.9495],
+  'Chandler':         [33.3062, -111.8413],
+  'Charlotte':        [35.2271,  -80.8431],
+  'Chesapeake':       [36.7682,  -76.2875],
+  'Chicago':          [41.8781,  -87.6298],
+  'Chula Vista':      [32.6401, -117.0842],
+  'Cincinnati':       [39.1031,  -84.5120],
+  'Cleveland':        [41.4993,  -81.6944],
+  'Colorado Springs': [38.8339, -104.8214],
+  'Columbus':         [39.9612,  -82.9988],
+  'Corpus Christi':   [27.8006,  -97.3964],
+  'Dallas':           [32.7767,  -96.7970],
+  'Denver':           [39.7392, -104.9903],
+  'Detroit':          [42.3314,  -83.0458],
+  'Durham':           [35.9940,  -78.8986],
+  'El Paso':          [31.7619, -106.4850],
+  'Fort Wayne':       [41.0793,  -85.1394],
+  'Fort Worth':       [32.7555,  -97.3308],
+  'Fresno':           [36.7378, -119.7871],
+  'Frisco':           [33.1507,  -96.8236],
+  'Garland':          [32.9126,  -96.6389],
+  'Gilbert':          [33.3528, -111.7890],
+  'Glendale':         [33.5387, -112.1860],
+  'Greensboro':       [36.0726,  -79.7920],
+  'Henderson':        [36.0395, -114.9817],
+  'Hialeah':          [25.8576,  -80.2781],
+  'Honolulu':         [21.3069, -157.8583],
+  'Houston':          [29.7604,  -95.3698],
+  'Indianapolis':     [39.7684,  -86.1581],
+  'Irvine':           [33.6846, -117.8265],
+  'Irving':           [32.8140,  -96.9489],
+  'Jacksonville':     [30.3322,  -81.6557],
+  'Jersey City':      [40.7178,  -74.0431],
+  'Kansas City':      [39.0997,  -94.5786],
+  'Laredo':           [27.5306,  -99.4803],
+  'Las Vegas':        [36.1699, -115.1398],
+  'Lexington':        [38.0406,  -84.5037],
+  'Lincoln':          [40.8136,  -96.7026],
+  'Long Beach':       [33.7701, -118.1937],
+  'Los Angeles':      [34.0522, -118.2437],
+  'Louisville':       [38.2527,  -85.7585],
+  'Lubbock':          [33.5779, -101.8552],
+  'Madison':          [43.0731,  -89.4012],
+  'Memphis':          [35.1495,  -90.0490],
+  'Mesa':             [33.4152, -111.8315],
+  'Miami':            [25.7617,  -80.1918],
+  'Milwaukee':        [43.0389,  -87.9065],
+  'Minneapolis':      [44.9778,  -93.2650],
+  'Nashville':        [36.1627,  -86.7816],
+  'New Orleans':      [29.9511,  -90.0715],
+  'New York City':    [40.7128,  -74.0060],
+  'Newark':           [40.7357,  -74.1724],
+  'Norfolk':          [36.8508,  -76.2859],
+  'North Las Vegas':  [36.1989, -115.1175],
+  'Oakland':          [37.8044, -122.2712],
+  'Oklahoma City':    [35.4676,  -97.5164],
+  'Omaha':            [41.2565,  -95.9345],
+  'Orlando':          [28.5383,  -81.3792],
+  'Philadelphia':     [39.9526,  -75.1652],
+  'Phoenix':          [33.4484, -112.0740],
+  'Pittsburgh':       [40.4406,  -79.9959],
+  'Plano':            [33.0198,  -96.6989],
+  'Port St. Lucie':   [27.2730,  -80.3582],
+  'Portland':         [45.5051, -122.6750],
+  'Raleigh':          [35.7796,  -78.6382],
+  'Reno':             [39.5296, -119.8138],
+  'Richmond':         [37.5407,  -77.4360],
+  'Riverside':        [33.9533, -117.3962],
+  'Sacramento':       [38.5816, -121.4944],
+  'San Antonio':      [29.4241,  -98.4936],
+  'San Diego':        [32.7157, -117.1611],
+  'San Francisco':    [37.7749, -122.4194],
+  'San Jose':         [37.3382, -121.8863],
+  'Santa Ana':        [33.7455, -117.8677],
+  'Scottsdale':       [33.4942, -111.9261],
+  'Seattle':          [47.6062, -122.3321],
+  'St. Louis':        [38.6270,  -90.1994],
+  'St. Paul':         [44.9537,  -93.0900],
+  'St. Petersburg':   [27.7676,  -82.6403],
+  'Stockton':         [37.9577, -121.2908],
+  'Tampa':            [27.9506,  -82.4572],
+  'Toledo':           [41.6639,  -83.5552],
+  'Tucson':           [32.2226, -110.9747],
+  'Tulsa':            [36.1540,  -95.9928],
+  'Virginia Beach':   [36.8529,  -75.9780],
+  'Washington DC':    [38.9072,  -77.0369],
+  'Wichita':          [37.6872,  -97.3301],
+  'Winston-Salem':    [36.0999,  -80.2442],
+};
+
+const US_BOUNDS = [[24.4, -125.0], [49.5, -66.9]];
+
+function getCategoryColor(cat) {
+  return CATEGORY_COLORS[cat?.toLowerCase()] || DEFAULT_COLOR;
+}
+
+function getDominantCategory(tools) {
+  const counts = {};
+  tools.forEach(t => {
+    const c = t.category1?.toLowerCase();
+    if (c) counts[c] = (counts[c] || 0) + 1;
   });
-};
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+}
 
-// Map bounds component
-const MapBounds = ({ data }) => {
+function getRadius(count) {
+  return Math.max(6, Math.min(22, 5 + count * 1.4));
+}
+
+function toTitleCase(str) {
+  return str.replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function FitUS() {
   const map = useMap();
-  
-  useEffect(() => {
-    if (data && data.length > 0) {
-      const bounds = L.latLngBounds(data.map(d => [d.lat, d.lng]));
-      map.fitBounds(bounds, { padding: [50, 50] });
-    }
-  }, [data, map]);
-  
+  useEffect(() => { map.fitBounds(US_BOUNDS); }, [map]);
   return null;
-};
+}
 
-function App() {
-  const [data, setData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
-  const [selectedCity, setSelectedCity] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState(['all']);
-  const [selectedDomains, setSelectedDomains] = useState(['all']);
-  const [selectedStatus, setSelectedStatus] = useState(['all']);
-  const [showFilters, setShowFilters] = useState(false);
+export default function App() {
+  const [allData, setAllData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedDomains, setSelectedDomains] = useState([]);
+  const [selectedCity, setSelectedCity] = useState(null);
 
-  // Load and parse CSV data
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const response = await fetch('/data.csv');
-        const csvText = await response.text();
-        
-        Papa.parse(csvText, {
+    fetch('/data.csv')
+      .then(r => r.text())
+      .then(text => {
+        Papa.parse(text, {
           header: true,
-          complete: (results) => {
-            const processedData = results.data
-              .filter(row => row.City && row.State)
-              .map(row => ({
-                city: row.City,
-                state: row.State,
-                category1: row['Category 1'],
-                category2: row['Category 2'],
-                category3: row['Category 3'],
-                domain: row.Domain,
-                stage: row['Stage of Deployment'],
-                toolName: row['Name of Tool'],
-                vendor: row['Vendor or Name of Tech (if applicable)'],
-                description: row['Description of Tool in your own words\n(1-2 sentences)  '],
-                totalCases: parseInt(row['# Total Cases Per City']) || 0,
-                corrections: parseInt(row.Corrections) || 0,
-                courts: parseInt(row.Courts) || 0,
-                lawEnforcement: parseInt(row['Law Enforcement']) || 0,
-                // Add coordinates for major cities (you'd want to geocode these properly)
-                lat: getLatForCity(row.City, row.State),
-                lng: getLngForCity(row.City, row.State)
+          skipEmptyLines: true,
+          transformHeader: h => h.trim().replace(/\s+/g, ' '),
+          complete: ({ data }) => {
+            const rows = data
+              .filter(r => r.City?.trim() && r.State?.trim())
+              .map(r => ({
+                city:        r.City.trim(),
+                state:       r.State.trim(),
+                category1:   r['Category 1']?.trim().toLowerCase() || '',
+                category2:   r['Category 2']?.trim().toLowerCase() || '',
+                category3:   r['Category 3']?.trim().toLowerCase() || '',
+                domain:      r.Domain?.trim().toLowerCase() || '',
+                stage:       r['Stage of Deployment']?.trim().toLowerCase() || '',
+                toolName:    r['Name of Tool']?.trim() || '',
+                vendor:      r['Vendor or Name of Tech (if applicable)']?.trim() || '',
+                description: r['Description of Tool in your own words (1-2 sentences)']?.trim() || '',
+                link1:       r['Link 1']?.trim() || '',
+                corrections:    parseInt(r['Corrections']) || 0,
+                courts:         parseInt(r['Courts']) || 0,
+                lawEnforcement: parseInt(r['Law Enforcement']) || 0,
               }))
-              .filter(d => d.lat && d.lng);
-            
-            setData(processedData);
-            setFilteredData(processedData);
+              .filter(r => CITY_COORDS[r.city]);
+            setAllData(rows);
             setLoading(false);
-          }
+          },
         });
-      } catch (error) {
-        console.error('Error loading data:', error);
-        setLoading(false);
-      }
-    };
-
-    loadData();
+      });
   }, []);
 
-  // Simple coordinate lookup (in production, you'd use a geocoding API)
-  const getLatForCity = (city, state) => {
-    const coordinates = {
-      'New York City': 40.7128,
-      'Los Angeles': 34.0522,
-      'Chicago': 41.8781,
-      'Houston': 29.7604,
-      'Phoenix': 33.4484,
-      'Philadelphia': 39.9526,
-      'San Antonio': 29.4241,
-      'San Diego': 32.7157,
-      'Dallas': 32.7767,
-      'San Jose': 37.3382
-    };
-    return coordinates[city] || null;
-  };
-
-  const getLngForCity = (city, state) => {
-    const coordinates = {
-      'New York City': -74.0060,
-      'Los Angeles': -118.2437,
-      'Chicago': -87.6298,
-      'Houston': -95.3698,
-      'Phoenix': -112.0740,
-      'Philadelphia': -75.1652,
-      'San Antonio': -98.4936,
-      'San Diego': -117.1611,
-      'Dallas': -96.7970,
-      'San Jose': -121.8863
-    };
-    return coordinates[city] || null;
-  };
-
-  // Filter data based on selected filters
-  useEffect(() => {
-    let filtered = data;
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(item =>
-        item.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.state.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.toolName?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Category filter
-    if (!selectedCategories.includes('all')) {
-      filtered = filtered.filter(item =>
-        selectedCategories.some(cat => 
-          item.category1?.toLowerCase() === cat ||
-          item.category2?.toLowerCase() === cat ||
-          item.category3?.toLowerCase() === cat
+  const filteredData = useMemo(() => {
+    let rows = allData;
+    if (selectedCategories.length > 0) {
+      rows = rows.filter(r =>
+        selectedCategories.some(c =>
+          r.category1 === c || r.category2 === c || r.category3 === c
         )
       );
     }
-
-    // Domain filter
-    if (!selectedDomains.includes('all')) {
-      filtered = filtered.filter(item =>
-        selectedDomains.includes(item.domain?.toLowerCase())
-      );
+    if (selectedDomains.length > 0) {
+      rows = rows.filter(r => selectedDomains.includes(r.domain));
     }
+    return rows;
+  }, [allData, selectedCategories, selectedDomains]);
 
-    // Status filter
-    if (!selectedStatus.includes('all')) {
-      filtered = filtered.filter(item =>
-        selectedStatus.includes(item.stage?.toLowerCase())
-      );
-    }
-
-    setFilteredData(filtered);
-  }, [data, searchTerm, selectedCategories, selectedDomains, selectedStatus]);
-
-  // Calculate statistics
-  const stats = useMemo(() => {
-    const cities = new Set(filteredData.map(d => `${d.city}, ${d.state}`));
-    const activeTools = filteredData.filter(d => d.stage?.toLowerCase() === 'active');
-    const domains = new Set(filteredData.map(d => d.domain).filter(Boolean));
-    
-    return {
-      cities: cities.size,
-      tools: filteredData.length,
-      activeTools: activeTools.length,
-      domains: domains.size
-    };
-  }, [filteredData]);
-
-  // Group data by city for markers
-  const cityData = useMemo(() => {
-    const grouped = {};
-    
-    filteredData.forEach(item => {
-      const key = `${item.city}, ${item.state}`;
-      if (!grouped[key]) {
-        grouped[key] = {
-          city: item.city,
-          state: item.state,
-          lat: item.lat,
-          lng: item.lng,
-          tools: [],
-          categories: new Set(),
-          domains: new Set(),
-          corrections: 0,
-          courts: 0,
-          lawEnforcement: 0
-        };
+  const cityGroups = useMemo(() => {
+    const map = {};
+    filteredData.forEach(r => {
+      if (!map[r.city]) {
+        const [lat, lng] = CITY_COORDS[r.city];
+        map[r.city] = { city: r.city, state: r.state, lat, lng, tools: [] };
       }
-      
-      grouped[key].tools.push(item);
-      if (item.category1) grouped[key].categories.add(item.category1);
-      if (item.category2) grouped[key].categories.add(item.category2);
-      if (item.category3) grouped[key].categories.add(item.category3);
-      if (item.domain) grouped[key].domains.add(item.domain);
-      grouped[key].corrections += item.corrections;
-      grouped[key].courts += item.courts;
-      grouped[key].lawEnforcement += item.lawEnforcement;
+      map[r.city].tools.push(r);
     });
-    
-    return Object.values(grouped);
+    return Object.values(map);
   }, [filteredData]);
 
-  const toggleFilter = (type, value) => {
-    if (type === 'category') {
-      if (value === 'all') {
-        setSelectedCategories(['all']);
-      } else {
-        setSelectedCategories(prev => 
-          prev.includes(value) 
-            ? prev.filter(v => v !== value)
-            : [...prev.filter(v => v !== 'all'), value]
-        );
-      }
-    } else if (type === 'domain') {
-      if (value === 'all') {
-        setSelectedDomains(['all']);
-      } else {
-        setSelectedDomains(prev => 
-          prev.includes(value) 
-            ? prev.filter(v => v !== value)
-            : [...prev.filter(v => v !== 'all'), value]
-        );
-      }
-    } else if (type === 'status') {
-      if (value === 'all') {
-        setSelectedStatus(['all']);
-      } else {
-        setSelectedStatus(prev => 
-          prev.includes(value) 
-            ? prev.filter(v => v !== value)
-            : [...prev.filter(v => v !== 'all'), value]
-        );
-      }
-    }
-  };
+  const stats = useMemo(() => {
+    const active = filteredData.filter(r => r.stage === 'active').length;
+    const domains = new Set(filteredData.map(r => r.domain).filter(Boolean));
+    return { cities: cityGroups.length, tools: filteredData.length, active, domains: domains.size };
+  }, [filteredData, cityGroups]);
+
+  function toggleCategory(cat) {
+    setSelectedCategories(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+    setSelectedCity(null);
+  }
+
+  function toggleDomain(domain) {
+    setSelectedDomains(prev =>
+      prev.includes(domain) ? prev.filter(d => d !== domain) : [...prev, domain]
+    );
+    setSelectedCity(null);
+  }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-lg">Loading map data...</div>
+      <div className="flex items-center justify-center h-screen text-gray-500 text-lg">
+        Loading map data…
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
-      {/* Header with Statistics */}
-      <div className="bg-white shadow-sm border-b border-gray-300 p-6">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6">
-            Classifying real-world deployments of AI in the criminal justice system
-          </h1>
-          
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="text-2xl font-bold text-gray-800">{stats.cities}</div>
-              <div className="text-sm text-gray-600">City Count</div>
-            </div>
-            
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="text-2xl font-bold text-gray-800">{stats.tools}</div>
-              <div className="text-sm text-gray-600">Application Count</div>
-            </div>
-            
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="text-2xl font-bold text-gray-800">{stats.activeTools}</div>
-              <div className="text-sm text-gray-600">Active Tools</div>
-            </div>
-            
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="text-2xl font-bold text-gray-800">{stats.domains}</div>
-              <div className="text-sm text-gray-600">Domains</div>
-            </div>
-          </div>
+    <div className="flex flex-col h-screen bg-white font-sans">
 
-          {/* Search and Filter Controls */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search cities, tools, or states..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center space-x-2 px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              <Filter className="w-5 h-5" />
-              <span>Filters</span>
-              {showFilters && <X className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
+      {/* Stats bar */}
+      <div className="flex gap-10 px-6 py-3 border-b border-gray-200">
+        <Stat value={stats.cities} label="Cities" />
+        <Stat value={stats.tools} label="Tools shown" />
+        <Stat value={stats.active} label="Active tools" />
+        <Stat value={stats.domains} label="Across domains" />
       </div>
 
-      {/* Filter Panel */}
-      {showFilters && (
-        <div className="bg-white border-b border-gray-200 p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Category Filters */}
-              <div>
-                <h3 className="font-semibold text-gray-800 mb-4 text-lg">Categories</h3>
-                <div className="flex flex-wrap gap-2">
-                  {['all', 'detection', 'surveillance', 'prediction', 'forensic analysis', 'back-end admin', 'front-end support'].map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => toggleFilter('category', cat)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        selectedCategories.includes(cat) 
-                          ? 'bg-gray-800 text-white shadow-lg' 
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {cat.charAt(0).toUpperCase() + cat.slice(1).replace('-', ' ')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Domain Filters */}
-              <div>
-                <h3 className="font-semibold text-gray-800 mb-4 text-lg">Domains</h3>
-                <div className="flex flex-wrap gap-2">
-                  {['all', 'law enforcement', 'courts', 'corrections'].map(domain => (
-                    <button
-                      key={domain}
-                      onClick={() => toggleFilter('domain', domain)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        selectedDomains.includes(domain) 
-                          ? 'bg-gray-800 text-white shadow-lg' 
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {domain.charAt(0).toUpperCase() + domain.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Status Filters */}
-              <div>
-                <h3 className="font-semibold text-gray-800 mb-4 text-lg">Status</h3>
-                <div className="flex flex-wrap gap-2">
-                  {['all', 'active', 'inactive', 'unsure'].map(status => (
-                    <button
-                      key={status}
-                      onClick={() => toggleFilter('status', status)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        selectedStatus.includes(status) 
-                          ? 'bg-gray-800 text-white shadow-lg' 
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Map Container */}
-      <div className="relative" style={{ height: '600px' }}>
-        <MapContainer
-          center={[39.8283, -98.5795]}
-          zoom={4}
-          style={{ height: '100%', width: '100%' }}
-          bounds={[[25.0, -125.0], [50.0, -65.0]]}
-          maxBounds={[[15.0, -180.0], [55.0, -50.0]]}
-          minZoom={3}
-          maxZoom={10}
-        >
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-gray-100 text-sm">
+        <span className="text-gray-500 font-semibold">Category:</span>
+        <FilterPill
+          label="All"
+          active={selectedCategories.length === 0}
+          color="#6b7280"
+          onClick={() => { setSelectedCategories([]); setSelectedCity(null); }}
+        />
+        {CATEGORIES.map(cat => (
+          <FilterPill
+            key={cat}
+            label={toTitleCase(cat)}
+            active={selectedCategories.includes(cat)}
+            color={CATEGORY_COLORS[cat]}
+            onClick={() => toggleCategory(cat)}
           />
-          
-          <GeoJSON 
-            data={usStates}
-            style={() => ({
-              color: '#666',
-              weight: 1.5,
-              opacity: 0.7,
-              fillOpacity: 0.02,
-              fillColor: '#f0f0f0'
+        ))}
+        <span className="text-gray-500 font-semibold ml-3">Domain:</span>
+        <FilterPill
+          label="All"
+          active={selectedDomains.length === 0}
+          color="#6b7280"
+          onClick={() => { setSelectedDomains([]); setSelectedCity(null); }}
+        />
+        {DOMAINS.map(d => (
+          <FilterPill
+            key={d}
+            label={toTitleCase(d)}
+            active={selectedDomains.includes(d)}
+            color="#0d9488"
+            onClick={() => toggleDomain(d)}
+          />
+        ))}
+      </div>
+
+      {/* Map + side panel */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* Map */}
+        <div className="relative flex-1">
+          <MapContainer
+            bounds={US_BOUNDS}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={true}
+            maxBounds={[[15, -170], [72, -50]]}
+            minZoom={3}
+          >
+            <FitUS />
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>'
+            />
+            <GeoJSON
+              data={usStates}
+              style={() => ({
+                color: '#9ca3af',
+                weight: 1,
+                fillColor: '#f3f4f6',
+                fillOpacity: 0.4,
+              })}
+            />
+            {cityGroups.map(city => {
+              const dominant = getDominantCategory(city.tools);
+              const color = getCategoryColor(dominant);
+              const radius = getRadius(city.tools.length);
+              const isSelected = selectedCity?.city === city.city;
+              return (
+                <CircleMarker
+                  key={city.city}
+                  center={[city.lat, city.lng]}
+                  radius={radius}
+                  pathOptions={{
+                    color: isSelected ? '#1e293b' : 'white',
+                    weight: isSelected ? 2.5 : 1.5,
+                    fillColor: color,
+                    fillOpacity: 0.85,
+                  }}
+                  eventHandlers={{ click: () => setSelectedCity(city) }}
+                />
+              );
             })}
-          />
-          
-          <MapBounds data={cityData} />
-          
-          {cityData.map((city, index) => {
-            const primaryCategory = Array.from(city.categories)[0] || 'other';
-            const icon = createCustomIcon(primaryCategory, city.tools.length);
-            
-            return (
-              <Marker
-                key={index}
-                position={[city.lat, city.lng]}
-                icon={icon}
-              >
-                <Popup>
-                  <div className="p-4 min-w-72 bg-white">
-                    <h3 className="font-bold text-lg text-gray-800 mb-3">
-                      {city.city}, {city.state}
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="text-sm text-gray-700">
-                        <span className="font-semibold">Total AI tool deployments:</span> {city.tools.length}
-                      </div>
-                      
-                      {city.corrections > 0 && (
-                        <div className="text-sm text-gray-700">
-                          <span className="font-semibold">Corrections:</span> {city.corrections}
-                        </div>
-                      )}
-                      
-                      {city.courts > 0 && (
-                        <div className="text-sm text-gray-700">
-                          <span className="font-semibold">Courts:</span> {city.courts}
-                        </div>
-                      )}
-                      
-                      {city.lawEnforcement > 0 && (
-                        <div className="text-sm text-gray-700">
-                          <span className="font-semibold">Law Enforcement:</span> {city.lawEnforcement}
-                        </div>
-                      )}
-                      
-                      <div className="pt-3 border-t border-gray-200">
-                        <div className="text-sm font-semibold text-gray-700 mb-2">Categories:</div>
-                        <div className="flex flex-wrap gap-2">
-                          {Array.from(city.categories).map(cat => (
-                            <span
-                              key={cat}
-                              className="px-2 py-1 rounded-full text-xs font-medium text-white"
-                              style={{
-                                backgroundColor: {
-                                  detection: '#14b8a6',
-                                  surveillance: '#ec4899',
-                                  prediction: '#f97316',
-                                  'forensic analysis': '#22c55e',
-                                  'back-end admin': '#8b5cf6',
-                                  'front-end support': '#92400e'
-                                }[cat?.toLowerCase()] || '#6b7280'
-                              }}
-                            >
-                              {cat}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
-        </MapContainer>
+          </MapContainer>
 
-        
-        {/* Legend */}
-        <div className="absolute bottom-4 left-4 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
-          <h4 className="font-semibold text-gray-800 mb-3">Legend</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 rounded-full bg-teal-500"></div>
-              <span className="text-gray-700">Detection</span>
+          {/* Legend */}
+          <div className="absolute bottom-4 left-4 bg-white bg-opacity-95 rounded-lg px-3 py-2 text-xs shadow-md z-[1000] pointer-events-none">
+            <div className="text-gray-400 mb-1.5">Dot size = number of tools &nbsp;|&nbsp; Color:</div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {CATEGORIES.map(cat => (
+                <span key={cat} className="flex items-center gap-1 text-gray-600">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLORS[cat] }} />
+                  {toTitleCase(cat)}
+                </span>
+              ))}
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 rounded-full bg-pink-500"></div>
-              <span className="text-gray-700">Surveillance</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-              <span className="text-gray-700">Prediction</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 rounded-full bg-green-500"></div>
-              <span className="text-gray-700">Forensic</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 rounded-full bg-purple-500"></div>
-              <span className="text-gray-700">Back-end</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 rounded-full bg-yellow-800"></div>
-              <span className="text-gray-700">Front-end</span>
-            </div>
-          </div>
-          <div className="text-xs text-gray-600 mt-3 pt-3 border-t border-gray-200">
-            Dot size = number of tools
           </div>
         </div>
+
+        {/* City detail panel */}
+        {selectedCity && (
+          <div className="w-80 border-l border-gray-200 flex flex-col bg-white flex-shrink-0 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-start flex-shrink-0">
+              <div>
+                <h2 className="font-bold text-gray-800">{selectedCity.city}, {selectedCity.state}</h2>
+                <div className="text-xs text-gray-500 mt-0.5">Total Tools: {selectedCity.tools.length}</div>
+              </div>
+              <button
+                onClick={() => setSelectedCity(null)}
+                className="text-gray-400 hover:text-gray-700 text-xl leading-none ml-2 flex-shrink-0"
+              >×</button>
+            </div>
+            <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
+              {selectedCity.tools.map((tool, i) => (
+                <div key={i} className="px-4 py-3">
+                  <div className="font-semibold text-gray-800 text-sm leading-snug">
+                    {tool.toolName || 'Unnamed Tool'}
+                  </div>
+                  {tool.vendor && (
+                    <div className="text-xs text-gray-400 mt-0.5">{tool.vendor}</div>
+                  )}
+                  {tool.description && (
+                    <div className="text-xs text-gray-600 mt-1.5 leading-relaxed">{tool.description}</div>
+                  )}
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {[tool.category1, tool.category2, tool.category3].filter(Boolean).map(cat => (
+                      <span
+                        key={cat}
+                        className="text-xs px-1.5 py-0.5 rounded-full text-white font-medium"
+                        style={{ background: getCategoryColor(cat) }}
+                      >
+                        {cat.toUpperCase()}
+                      </span>
+                    ))}
+                    {tool.domain && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700 font-medium border border-teal-200">
+                        {tool.domain.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                      tool.stage === 'active'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-600'
+                    }`}>
+                      {(tool.stage || 'unknown').toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export default App;
+function Stat({ value, label }) {
+  return (
+    <div>
+      <div className="text-2xl font-bold text-teal-500">{value}</div>
+      <div className="text-xs text-gray-400 mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function FilterPill({ label, active, color, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-3 py-1 rounded-full border text-xs font-medium transition-all"
+      style={
+        active
+          ? { background: color, borderColor: color, color: 'white' }
+          : { background: 'white', borderColor: '#d1d5db', color: '#4b5563' }
+      }
+    >
+      {label}
+    </button>
+  );
+}
