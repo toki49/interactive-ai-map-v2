@@ -305,8 +305,9 @@ export default function App() {
             bounds={US_BOUNDS}
             style={{ height: '100%', width: '100%' }}
             zoomControl={true}
-            maxBounds={[[15, -170], [72, -50]]}
-            minZoom={3}
+            maxBounds={[[17, -170], [72, -52]]}
+            maxBoundsViscosity={1.0}
+            minZoom={4}
           >
             <FitUS />
             <TileLayer
