@@ -155,7 +155,7 @@ The map handles large datasets efficiently by:
 
 ## License
 
-This project is part of the JAI-T initiative. Please refer to your organization's licensing terms.
+This project is part of the JAI-T initiative found at www.jai-t.com by Evidence for Justice Lab at Georgetown University McCourt School of Public Policy. Created for solely research and not commercial purposes.
 
 ## Support
 
