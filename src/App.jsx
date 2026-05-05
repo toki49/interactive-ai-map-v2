@@ -4,6 +4,7 @@ import { Search, Filter, X, MapPin, Activity, Users, Globe } from 'lucide-react'
 import Papa from 'papaparse';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import usStates from '../public/us-states.json';
 
 // Custom marker icons
 const createCustomIcon = (category, size) => {
@@ -407,7 +408,7 @@ function App() {
           />
           
           <GeoJSON 
-            data={require('../public/us-states.json')}
+            data={usStates}
             style={() => ({
               color: '#666',
               weight: 1.5,
