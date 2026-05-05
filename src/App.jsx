@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, CircleMarker, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, useMap } from 'react-leaflet';
 import Papa from 'papaparse';
 import 'leaflet/dist/leaflet.css';
-import usStates from '../public/us-states.json';
 
 const CATEGORY_COLORS = {
   'detection':        '#3b82f6',
@@ -313,15 +312,6 @@ export default function App() {
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
               attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>'
-            />
-            <GeoJSON
-              data={usStates}
-              style={() => ({
-                color: '#9ca3af',
-                weight: 1,
-                fillColor: '#f3f4f6',
-                fillOpacity: 0.4,
-              })}
             />
             {cityGroups.map(city => {
               const dominant = getDominantCategory(city.tools);
