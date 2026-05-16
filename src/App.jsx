@@ -371,9 +371,6 @@ export default function App() {
                   {tool.vendor && (
                     <div className="text-xs text-gray-400 mt-0.5">{tool.vendor}</div>
                   )}
-                  {tool.description && (
-                    <div className="text-xs text-gray-600 mt-1.5 leading-relaxed">{tool.description}</div>
-                  )}
                   <div className="flex flex-wrap gap-1 mt-2">
                     {[tool.category1, tool.category2, tool.category3].filter(Boolean).map(cat => (
                       <span
@@ -389,15 +386,6 @@ export default function App() {
                         {tool.domain.toUpperCase()}
                       </span>
                     )}
-                  </div>
-                  <div className="mt-2">
-                    <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                      tool.stage === 'active'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-600'
-                    }`}>
-                      {(tool.stage || 'unknown').toUpperCase()}
-                    </span>
                   </div>
                 </div>
               ))}
